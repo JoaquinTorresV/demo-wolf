@@ -1,80 +1,56 @@
-// Estado de conversación en BD: backend stateless, reiniciable sin perder contexto.
-import { query } from '../../db/pool.js';
+// Estado de conversación en SQLite. Backend stateless: reiniciable sin perder contexto.
+import { db } from '../../db/db.js';
 
 // Devuelve { candidato, conversacion } creándolos si es la primera vez.
-export async function getOrCreateCandidato(telefono) {
-  const existing = await query(
-    `SELECT * FROM candidatos WHERE telefono = $1`,
-    [telefono],
-  );
-
-  let candidato = existing.rows[0];
+// conversacion.datos viene ya parseado a objeto.
+export function getOrCreateCandidato(telefono) {
+  let candidato = db.prepare('SELECT * FROM candidatos WHERE telefono = ?').get(telefono);
   if (!candidato) {
-    const inserted = await query(
-      `INSERT INTO candidatos (telefono) VALUES ($1) RETURNING *`,
-      [telefono],
-    );
-    candidato = inserted.rows[0];
+    const info = db.prepare('INSERT INTO candidatos (telefono) VALUES (?)').run(telefono);
+    candidato = db.prepare('SELECT * FROM candidatos WHERE id = ?').get(Number(info.lastInsertRowid));
   }
 
-  const conv = await query(
-    `SELECT * FROM conversaciones WHERE candidato_id = $1 ORDER BY id DESC LIMIT 1`,
-    [candidato.id],
-  );
-
-  let conversacion = conv.rows[0];
+  let conversacion = db
+    .prepare('SELECT * FROM conversaciones WHERE candidato_id = ? ORDER BY id DESC LIMIT 1')
+    .get(candidato.id);
   if (!conversacion) {
-    const inserted = await query(
-      `INSERT INTO conversaciones (candidato_id) VALUES ($1) RETURNING *`,
-      [candidato.id],
-    );
-    conversacion = inserted.rows[0];
+    const info = db.prepare('INSERT INTO conversaciones (candidato_id) VALUES (?)').run(candidato.id);
+    conversacion = db.prepare('SELECT * FROM conversaciones WHERE id = ?').get(Number(info.lastInsertRowid));
   }
 
+  conversacion.datos = JSON.parse(conversacion.datos || '{}');
   return { candidato, conversacion };
 }
 
-export async function saveMensaje(candidatoId, rol, contenido) {
-  await query(
-    `INSERT INTO mensajes (candidato_id, rol, contenido) VALUES ($1, $2, $3)`,
-    [candidatoId, rol, contenido],
-  );
+export function saveMensaje(candidatoId, rol, contenido) {
+  db.prepare('INSERT INTO mensajes (candidato_id, rol, contenido) VALUES (?, ?, ?)').run(candidatoId, rol, contenido);
 }
 
 // Historial en formato que entiende OpenAI ({ role, content }).
-export async function getHistorial(candidatoId, limit = 20) {
-  const res = await query(
-    `SELECT rol, contenido FROM mensajes
-     WHERE candidato_id = $1
-     ORDER BY creado_en DESC
-     LIMIT $2`,
-    [candidatoId, limit],
-  );
-  return res.rows
-    .reverse()
-    .map((m) => ({ role: m.rol, content: m.contenido }));
+export function getHistorial(candidatoId, limit = 20) {
+  const rows = db
+    .prepare('SELECT rol, contenido FROM mensajes WHERE candidato_id = ? ORDER BY creado_en DESC, id DESC LIMIT ?')
+    .all(candidatoId, limit);
+  return rows.reverse().map((m) => ({ role: m.rol, content: m.contenido }));
 }
 
-export async function updateConversacion(conversacionId, { estado, datos }) {
-  await query(
+export function updateConversacion(conversacionId, { estado, datos }) {
+  db.prepare(
     `UPDATE conversaciones
-     SET estado = COALESCE($2, estado),
-         datos = COALESCE($3::jsonb, datos),
-         actualizado_en = now()
-     WHERE id = $1`,
-    [conversacionId, estado ?? null, datos != null ? JSON.stringify(datos) : null],
-  );
+     SET estado = COALESCE(?, estado),
+         datos = COALESCE(?, datos),
+         actualizado_en = datetime('now')
+     WHERE id = ?`,
+  ).run(estado ?? null, datos != null ? JSON.stringify(datos) : null, conversacionId);
 }
 
-// Actualiza el resultado/puntuación final del candidato.
-export async function updateCandidato(candidatoId, { resultado, puntuacion, zona }) {
-  await query(
+export function updateCandidato(candidatoId, { resultado, puntuacion, zona }) {
+  db.prepare(
     `UPDATE candidatos
-     SET resultado = COALESCE($2, resultado),
-         puntuacion = COALESCE($3, puntuacion),
-         zona = COALESCE($4, zona),
-         actualizado_en = now()
-     WHERE id = $1`,
-    [candidatoId, resultado ?? null, puntuacion ?? null, zona ?? null],
-  );
+     SET resultado = COALESCE(?, resultado),
+         puntuacion = COALESCE(?, puntuacion),
+         zona = COALESCE(?, zona),
+         actualizado_en = datetime('now')
+     WHERE id = ?`,
+  ).run(resultado ?? null, puntuacion ?? null, zona ?? null, candidatoId);
 }

@@ -1,6 +1,10 @@
 import express from 'express';
 import 'dotenv/config';
+import { ensureSchema } from './db/db.js';
 import { webhookRouter } from './routes/webhook.js';
+
+// Crea las tablas si no existen (no hace falta migrar a mano).
+ensureSchema();
 
 const app = express();
 app.use(express.json());

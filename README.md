@@ -6,13 +6,13 @@ Cataluña) y los filtra según los criterios de la empresa.
 - **Canal:** WhatsApp vía YCloud (API oficial).
 - **Cerebro:** OpenAI `gpt-4.1-mini` — **solo conversa**, no decide.
 - **Decisión apto/no apto:** lógica determinista en `src/services/bot/filters.js` (Fase 2).
-- **Datos:** PostgreSQL.
+- **Datos:** SQLite (integrado en Node, `node:sqlite`) — sin servicios externos.
 
 ## Arquitectura
 
 ```
 WhatsApp → YCloud → POST /webhook → engine.js
-   ├─ state.js   (estado y mensajes en PostgreSQL)
+   ├─ state.js   (estado y mensajes en SQLite)
    ├─ openai.js  (redacción natural de la respuesta)
    └─ filters.js (decisión determinista — Fase 2)
 → ycloud.js (responde por WhatsApp)
@@ -25,10 +25,10 @@ Los filtros duros y la puntuación viven en código (`filters.js`).
 
 1. `npm install`
 2. Copiar `.env.example` a `.env` y rellenar:
-   - `DATABASE_URL` (PostgreSQL)
    - `OPENAI_API_KEY`
    - `YCLOUD_API_KEY`, `YCLOUD_PHONE_NUMBER`, `YCLOUD_WEBHOOK_SECRET`
-3. Crear la base de datos y aplicar el esquema:
+   - `SQLITE_PATH` (opcional; por defecto `./data/wolf.db`)
+3. (Opcional) crear el esquema a mano — el servidor también lo hace solo al arrancar:
    ```
    npm run migrate
    ```

@@ -1,24 +1,23 @@
 {
   "name": "wolf-control-bot",
   "version": "0.1.0",
-  "description": "Bot de WhatsApp para filtrar candidatos de Wolf Control (seguridad, Cataluña). YCloud + OpenAI + PostgreSQL.",
+  "description": "Bot de WhatsApp para filtrar candidatos de Wolf Control (seguridad, Cataluña). YCloud + OpenAI + SQLite.",
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js",
-    "migrate": "node src/db/migrate.js",
+    "start": "node --experimental-sqlite src/index.js",
+    "dev": "node --experimental-sqlite --watch src/index.js",
+    "migrate": "node --experimental-sqlite src/db/migrate.js",
     "test": "node src/services/bot/filters.test.js",
-    "simular": "node scripts/simular.js",
-    "probar": "node scripts/probar.js"
+    "simular": "node --experimental-sqlite scripts/simular.js",
+    "probar": "node --experimental-sqlite scripts/probar.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
-    "openai": "^6.2.0",
-    "pg": "^8.16.3"
+    "openai": "^6.2.0"
   }
 }
