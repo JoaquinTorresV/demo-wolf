@@ -47,12 +47,17 @@ t('no_apto: tiene vehículo pero no carnet', () => {
   assert.equal(r.resultado, 'no_apto');
 });
 
-t('no_apto: no habla catalán', () => {
-  const r = evaluarCandidato({ ...base(), idiomas: { castellano: true, catalan: false } });
+t('apto: no habla catalán pero sí castellano (catalán no descarta)', () => {
+  const r = evaluarCandidato({ ...base(), idiomas: { castellano: true, catalan: false }, situacionales: [{ puntuacion: 6 }, { puntuacion: 6 }] });
+  assert.equal(r.resultado, 'apto');
+});
+
+t('no_apto: no habla castellano', () => {
+  const r = evaluarCandidato({ ...base(), idiomas: { castellano: false, catalan: true } });
   assert.equal(r.resultado, 'no_apto');
 });
 
-t('en_proceso: idiomas aún en null no descarta', () => {
+t('en_proceso: castellano aún en null no descarta', () => {
   const d = base(); d.idiomas = { castellano: null, catalan: null };
   assert.equal(evaluarCandidato(d).resultado, 'en_proceso');
 });
@@ -83,8 +88,8 @@ t('humano: zona cercana a confirmar', () => {
 });
 
 t('prioridad: knockout definitivo gana sobre caso humano', () => {
-  // sin idiomas (no_apto) + vehículo en taller (humano) → debe ganar no_apto
-  const r = evaluarCandidato({ ...base(), idiomas: { castellano: true, catalan: false }, vehiculo: 'taller' });
+  // no habla castellano (no_apto) + vehículo en taller (humano) → debe ganar no_apto
+  const r = evaluarCandidato({ ...base(), idiomas: { castellano: false, catalan: true }, vehiculo: 'taller' });
   assert.equal(r.resultado, 'no_apto');
 });
 

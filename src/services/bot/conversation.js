@@ -21,7 +21,7 @@ const ETIQUETA_CAMPO = {
   zona: 'de qué pueblo o ciudad es (para saber su zona)',
   vehiculo: 'si tiene coche o moto propio y carnet de conducir',
   disponibilidad: 'qué disponibilidad tiene: días sueltos (fiestas/eventos) o fija para todo el verano (campings)',
-  idiomas: 'si habla castellano y catalán',
+  idiomas: 'qué idiomas habla (el castellano es imprescindible; el catalán y otros suman)',
 };
 
 function esPrimerTurno(historial) {

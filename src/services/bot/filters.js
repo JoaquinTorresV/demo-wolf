@@ -67,13 +67,12 @@ function checkDisponibilidad(d) {
 function checkIdiomas(d) {
   const i = d.idiomas;
   if (i == null) return { estado: 'falta' };
-  // Alguno explícitamente false → descarta (castellano y catalán son obligatorios).
-  if (i.castellano === false || i.catalan === false) {
-    return { estado: 'no_apto', motivo: 'no cumple idiomas obligatorios (castellano y catalán)' };
+  // Solo el castellano es obligatorio. Catalán y otros idiomas suman, no descartan.
+  if (i.castellano === false) {
+    return { estado: 'no_apto', motivo: 'no habla castellano (obligatorio)' };
   }
-  // Ambos confirmados → ok.
-  if (i.castellano === true && i.catalan === true) return { estado: 'ok' };
-  // Si alguno sigue en null, todavía falta información.
+  if (i.castellano === true) return { estado: 'ok' };
+  // Castellano aún en null → falta información.
   return { estado: 'falta' };
 }
 

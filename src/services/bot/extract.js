@@ -15,7 +15,8 @@ o no está claro, déjalo en null. No deduzcas ni inventes.
   "carnet":         // true si tiene carnet de conducir, false si no, null si no se sabe.
   "disponibilidad": // "fija" (todo el verano / fijo, ej. campings), "sueltos" (días sueltos, fiestas/eventos),
                     // "mas_adelante" (solo puede dentro de un tiempo), "ninguna", o null.
-  "idiomas":        // objeto { "castellano": true/false/null, "catalan": true/false/null }
+  "idiomas":        // objeto { "castellano": true/false/null, "catalan": true/false/null, "otros": ["..."] }
+                    // castellano es lo único obligatorio; catalán y otros suman pero no descartan.
   "experiencia":    // "si" | "no" | null (informativo, no descarta)
 }
 
@@ -33,6 +34,7 @@ function fusionar(actual, nuevo) {
       out.idiomas = {
         castellano: v.castellano ?? prev.castellano ?? null,
         catalan: v.catalan ?? prev.catalan ?? null,
+        otros: (v.otros && v.otros.length ? v.otros : prev.otros) || [],
       };
     } else {
       out[k] = v;

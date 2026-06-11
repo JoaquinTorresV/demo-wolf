@@ -7,7 +7,20 @@ import {
   updateCandidato,
 } from './state.js';
 import { procesarTurno } from './conversation.js';
+import { aplicarEtiquetas } from '../whatsapp/ycloud.js';
 import { normalizePhone } from '../../utils/phone.js';
+
+// Etiquetas de YCloud según la decisión final (para que los reclutadores filtren).
+function etiquetasParaDecision(decision, datos) {
+  if (decision.resultado === 'apto') {
+    const tags = ['apto'];
+    if (datos.zona) tags.push(`zona-${datos.zona}`);
+    return tags;
+  }
+  if (decision.resultado === 'no_apto') return ['no-apto'];
+  if (decision.resultado === 'humano') return ['derivado-humano'];
+  return [];
+}
 
 // Procesa un mensaje entrante y devuelve el texto de respuesta del bot.
 export async function procesarMensaje(rawFrom, texto) {
@@ -37,7 +50,9 @@ export async function procesarMensaje(rawFrom, texto) {
       puntuacion: decision.puntuacion ?? null,
       zona: datos.zona ?? null,
     });
-    // TODO (Fase 2, requiere cuentas): etiquetar en YCloud y generar CV en Drive.
+    // Etiquetar en YCloud para que los reclutadores filtren sin abrir el chat general.
+    await aplicarEtiquetas(telefono, etiquetasParaDecision(decision, datos));
+    // TODO (requiere cuenta Google): generar CV del apto en Drive.
   }
 
   await saveMensaje(candidato.id, 'assistant', reply);
