@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { parseInbound, enviarTexto } from '../services/whatsapp/ycloud.js';
+import { parseInbound, enviarTexto, descargarAudio } from '../services/whatsapp/ycloud.js';
+import { transcribir } from '../services/llm/openai.js';
 import { procesarMensaje } from '../services/bot/engine.js';
 
 export const webhookRouter = Router();
@@ -20,9 +21,30 @@ webhookRouter.post('/webhook', async (req, res) => {
 
   try {
     const inbound = parseInbound(req.body);
-    if (!inbound) return; // no es un mensaje de texto entrante
+    if (!inbound) return; // no es un mensaje aprovechable
 
-    const respuesta = await procesarMensaje(inbound.from, inbound.text);
+    let texto = inbound.text;
+
+    // Si es una nota de voz, descargar y transcribir.
+    if (!texto && inbound.audio) {
+      const media = await descargarAudio(inbound.audio);
+      if (media?.buffer) {
+        try {
+          texto = await transcribir(media.buffer, 'audio.ogg', media.mimeType);
+          console.log('[webhook] audio transcrito:', texto);
+        } catch (err) {
+          console.error('[webhook] error transcribiendo audio:', err.message);
+        }
+      }
+    }
+
+    // Si no pudimos entender nada, pedir que lo escriba.
+    if (!texto) {
+      await enviarTexto(inbound.from, 'Perdona, no he podido escuchar bien el audio 🙏 ¿Me lo puedes escribir?');
+      return;
+    }
+
+    const respuesta = await procesarMensaje(inbound.from, texto);
     if (respuesta) {
       await enviarTexto(inbound.from, respuesta);
     }

@@ -81,15 +81,50 @@ export async function aplicarEtiquetas(phoneNumber, nuevasTags = []) {
   }
 }
 
-// Extrae { from, text } de un evento de webhook de YCloud (inbound message).
-// Devuelve null si el evento no es un mensaje de texto entrante.
+// Extrae { from, text, audio } de un evento de webhook de YCloud (inbound message).
+// `audio` viene poblado si es una nota de voz; `text` si es texto. Devuelve null
+// si no es un mensaje aprovechable.
 export function parseInbound(payload) {
   const msg = payload?.whatsappInboundMessage || payload?.message || payload;
   if (!msg) return null;
 
   const from = msg.from || msg.customerProfile?.phoneNumber;
+  if (!from) return null;
+
   const text = msg.text?.body ?? msg.body ?? null;
 
-  if (!from || !text) return null;
-  return { from, text };
+  let audio = null;
+  if (msg.type === 'audio' || msg.audio || msg.voice) {
+    const a = msg.audio || msg.voice || {};
+    audio = {
+      id: a.id || null,
+      link: a.link || a.url || null,
+      mimeType: a.mimeType || a.mime_type || 'audio/ogg',
+    };
+  }
+
+  if (!text && !audio) return null;
+  return { from, text, audio };
+}
+
+// Descarga el audio de una nota de voz. Devuelve { buffer, mimeType } o null.
+export async function descargarAudio(audio) {
+  if (!audio?.link) {
+    console.warn('[ycloud] audio sin link descargable:', JSON.stringify(audio));
+    return null;
+  }
+  const apiKey = process.env.YCLOUD_API_KEY;
+  try {
+    // Intento con API key (por si el link de YCloud requiere auth).
+    let res = await fetch(audio.link, apiKey ? { headers: { 'X-API-Key': apiKey } } : {});
+    if (!res.ok) res = await fetch(audio.link); // reintento sin auth (link público)
+    if (!res.ok) {
+      console.error('[ycloud] no se pudo descargar el audio:', res.status);
+      return null;
+    }
+    return { buffer: Buffer.from(await res.arrayBuffer()), mimeType: audio.mimeType };
+  } catch (err) {
+    console.error('[ycloud] excepción descargando audio:', err.message);
+    return null;
+  }
 }

@@ -1,6 +1,6 @@
 // Wrapper de OpenAI. El LLM SOLO conversa y extrae datos; NUNCA decide apto/no apto
 // (eso lo hace bot/filters.js de forma determinista).
-import OpenAI from 'openai';
+import OpenAI, { toFile } from 'openai';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -38,4 +38,15 @@ export async function chat({ messages, json = false, temperature = 0.6, model })
   } catch {
     return {};
   }
+}
+
+// Transcribe un audio (Buffer) a texto. WhatsApp manda OGG/Opus, compatible con Whisper.
+export async function transcribir(buffer, filename = 'audio.ogg', mimeType = 'audio/ogg') {
+  const file = await toFile(buffer, filename, { type: mimeType });
+  const res = await getClient().audio.transcriptions.create({
+    file,
+    model: process.env.OPENAI_TRANSCRIBE_MODEL || 'whisper-1',
+    language: 'es',
+  });
+  return res.text?.trim() || '';
 }
