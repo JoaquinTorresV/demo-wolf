@@ -28,7 +28,7 @@ function esPrimerTurno(historial) {
   return !historial.some((m) => m.role === 'assistant');
 }
 
-async function generar(historial, instruccion, temperature = 0.6) {
+async function generar(historial, instruccion, temperature = 0.8) {
   return chat({
     temperature,
     messages: [
@@ -37,6 +37,18 @@ async function generar(historial, instruccion, temperature = 0.6) {
       { role: 'system', content: `INSTRUCCIÓN PARA ESTE TURNO (no la menciones literalmente): ${instruccion}` },
     ],
   });
+}
+
+// La conversación ya está cerrada (apto/no_apto/humano) y la persona sigue escribiendo
+// (agradece, se despide...). Respuesta breve y cordial, SIN repetir el veredicto.
+export async function respuestaConversacionCerrada(historial) {
+  return generar(
+    historial,
+    'La conversación de selección YA terminó. La persona solo está agradeciendo o ' +
+      'despidiéndose. Respóndele en UNA línea, cálido y natural, como un cierre cordial. ' +
+      'NO repitas el resultado, ni los siguientes pasos, ni que un compañero le contactará. ' +
+      'Nada de discursos: solo despídete con naturalidad.',
+  );
 }
 
 async function generarCierre(decision, historial, datos) {

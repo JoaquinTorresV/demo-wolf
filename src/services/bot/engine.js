@@ -6,9 +6,11 @@ import {
   updateConversacion,
   updateCandidato,
 } from './state.js';
-import { procesarTurno } from './conversation.js';
+import { procesarTurno, respuestaConversacionCerrada } from './conversation.js';
 import { aplicarEtiquetas } from '../whatsapp/ycloud.js';
 import { normalizePhone } from '../../utils/phone.js';
+
+const RESULTADOS_FINALES = ['apto', 'no_apto', 'humano'];
 
 // Etiquetas de YCloud según la decisión final (para que los reclutadores filtren).
 function etiquetasParaDecision(decision, datos) {
@@ -32,8 +34,16 @@ export async function procesarMensaje(rawFrom, texto) {
 
   const { candidato, conversacion } = await getOrCreateCandidato(telefono);
   await saveMensaje(candidato.id, 'user', texto);
-
   const historial = await getHistorial(candidato.id);
+
+  // Si la conversación ya está cerrada, responder breve y natural sin re-evaluar
+  // (evita repetir el veredicto cada vez que la persona escribe "gracias", "chao"...).
+  if (RESULTADOS_FINALES.includes(candidato.resultado)) {
+    const reply = await respuestaConversacionCerrada(historial);
+    await saveMensaje(candidato.id, 'assistant', reply);
+    return reply;
+  }
+
   const { datos, reply, decision } = await procesarTurno({
     datos: conversacion.datos || {},
     historial,
