@@ -53,9 +53,14 @@ export function construirCV(telefono, datos = {}, decision = {}) {
     lineas.push('');
   });
 
-  const slug = (datos.nombre || telefono).replace(/[^\w\sáéíóúñ-]/gi, '').trim().replace(/\s+/g, '_');
+  const ciudad = datos.zona ? datos.zona.charAt(0).toUpperCase() + datos.zona.slice(1) : 'Sin zona';
+  // Fecha local de España, formato seguro para nombre: "2026-06-23 14h30".
+  const fechaArchivo = new Date()
+    .toLocaleString('sv-SE', { timeZone: 'Europe/Madrid' })
+    .slice(0, 16)
+    .replace(':', 'h');
   return {
-    nombreArchivo: `CV_${slug}_${datos.zona || 'sinzona'}`,
+    nombreArchivo: `Candidato Wolf - ${ciudad} - ${fechaArchivo}`,
     contenido: lineas.join('\n'),
   };
 }
