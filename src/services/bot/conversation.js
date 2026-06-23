@@ -96,14 +96,33 @@ export async function procesarTurno({ datos = {}, historial, mensaje }) {
     return { datos, reply, decision };
   }
 
-  // 5) Fase situacional: plantear la siguiente situación.
+  // 5) Fase situacional (ya pasó los filtros duros).
   if (decision.fase === 'situacional') {
+    // 5a) Antes de las situaciones, pregunta UNA vez por la experiencia (no descarta).
+    if (datos.experiencia == null && !datos.preguntoExperiencia) {
+      datos.preguntoExperiencia = true;
+      const reply = await generar(
+        historial,
+        'Ya tienes sus datos básicos. Pregúntale de forma natural si tiene experiencia previa ' +
+          'en seguridad. NO plantees todavía ninguna situación; solo esta pregunta.',
+      );
+      return { datos, reply, decision };
+    }
+
+    // 5b) Plantear la siguiente situación.
     const siguiente = SITUACIONES[datos.situacionales.length];
     if (siguiente) {
       datos.escenarioPendiente = siguiente;
+      // Si acaba de decir que no tiene experiencia, tranquilízalo antes de la 1ª situación.
+      const tranquiliza =
+        datos.situacionales.length === 0 && datos.experiencia === 'no'
+          ? 'El candidato dijo que no tiene experiencia: tranquilízalo en una frase (es un sector ' +
+            'que se aprende y aquí lo forman). Luego, '
+          : '';
       const reply = await generar(
         historial,
-        `Plantéale de forma natural esta situación para ver cómo reaccionaría: "${siguiente}". Hazlo conversacional, no como un test.`,
+        `${tranquiliza}plantéale de forma natural esta situación para ver cómo reaccionaría: ` +
+          `"${siguiente}". Hazlo conversacional, no como un test.`,
       );
       return { datos, reply, decision };
     }

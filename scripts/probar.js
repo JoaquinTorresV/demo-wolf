@@ -13,7 +13,8 @@ const GUIONES = [
     nombre: 'APTO esperado (Girona, todo OK)',
     mensajes: [
       'hola, vi que buscáis gente',
-      'Soy de Girona, tengo coche propio y carnet de conducir. Hablo castellano y catalán. Puedo trabajar todo el verano. No tengo experiencia previa.',
+      'Soy de Girona, tengo coche propio y carnet de conducir. Hablo castellano y catalán. Puedo trabajar todo el verano.',
+      'No, sería mi primer trabajo en seguridad',
       'Lo primero mantener la calma, avisaría al 112 y no dejaría sola a la persona hasta que llegue ayuda.',
       'Intentaría separarlos con calma, pediría refuerzos a mis compañeros y avisaría a la policía si hace falta.',
     ],
