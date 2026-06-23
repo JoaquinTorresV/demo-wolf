@@ -46,7 +46,7 @@ function fusionar(actual, nuevo) {
 
 export async function extraerDatos(historial, datosActuales = {}) {
   const transcript = historial
-    .map((m) => `${m.role === 'user' ? 'Candidato' : 'Mark'}: ${m.content}`)
+    .map((m) => `${m.role === 'user' ? 'Candidato' : 'Marc'}: ${m.content}`)
     .join('\n');
 
   const nuevo = await chat({

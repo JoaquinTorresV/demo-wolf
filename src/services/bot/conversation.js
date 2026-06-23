@@ -113,7 +113,7 @@ export async function procesarTurno({ datos = {}, historial, mensaje }) {
   const faltan = camposFaltantes(datos);
   const objetivo = ETIQUETA_CAMPO[faltan[0]] || 'lo que necesites para conocerle mejor';
   const intro = esPrimerTurno(historial)
-    ? 'Es tu primer mensaje: preséntate en una frase breve como Mark, del equipo de selección de Wolf Control, y luego '
+    ? 'Es tu primer mensaje: preséntate en una frase breve como Marc, del equipo de selección de Wolf Control, y luego '
     : '';
   const reply = await generar(
     historial,
