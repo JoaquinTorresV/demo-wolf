@@ -44,13 +44,14 @@ export function updateConversacion(conversacionId, { estado, datos }) {
   ).run(estado ?? null, datos != null ? JSON.stringify(datos) : null, conversacionId);
 }
 
-export function updateCandidato(candidatoId, { resultado, puntuacion, zona }) {
+export function updateCandidato(candidatoId, { resultado, puntuacion, zona, nombre }) {
   db.prepare(
     `UPDATE candidatos
      SET resultado = COALESCE(?, resultado),
          puntuacion = COALESCE(?, puntuacion),
          zona = COALESCE(?, zona),
+         nombre = COALESCE(?, nombre),
          actualizado_en = datetime('now')
      WHERE id = ?`,
-  ).run(resultado ?? null, puntuacion ?? null, zona ?? null, candidatoId);
+  ).run(resultado ?? null, puntuacion ?? null, zona ?? null, nombre ?? null, candidatoId);
 }

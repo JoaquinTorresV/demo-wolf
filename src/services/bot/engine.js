@@ -7,7 +7,9 @@ import {
   updateCandidato,
 } from './state.js';
 import { procesarTurno, respuestaConversacionCerrada } from './conversation.js';
+import { construirCV } from './cv.js';
 import { aplicarEtiquetas } from '../whatsapp/ycloud.js';
+import { subirCV } from '../google/drive.js';
 import { normalizePhone } from '../../utils/phone.js';
 
 const RESULTADOS_FINALES = ['apto', 'no_apto', 'humano'];
@@ -59,10 +61,15 @@ export async function procesarMensaje(rawFrom, texto) {
       resultado: decision.resultado,
       puntuacion: decision.puntuacion ?? null,
       zona: datos.zona ?? null,
+      nombre: datos.nombre ?? null,
     });
     // Etiquetar en YCloud para que los reclutadores filtren sin abrir el chat general.
     await aplicarEtiquetas(telefono, etiquetasParaDecision(decision, datos));
-    // TODO (requiere cuenta Google): generar CV del apto en Drive.
+    // Solo los APTOS generan CV en la carpeta de Drive.
+    if (decision.resultado === 'apto') {
+      const { nombreArchivo, contenido } = construirCV(telefono, datos, decision);
+      await subirCV(nombreArchivo, contenido);
+    }
   }
 
   await saveMensaje(candidato.id, 'assistant', reply);

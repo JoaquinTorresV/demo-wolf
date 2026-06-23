@@ -7,6 +7,7 @@ A partir de la conversación, devuelve SOLO un JSON con estos campos. Si un dato
 o no está claro, déjalo en null. No deduzcas ni inventes.
 
 {
+  "nombre":         // nombre del candidato si lo menciona, o null.
   "zona":           // "girona" | "barcelona" | "tarragona" si el pueblo/ciudad pertenece a esa provincia;
                     // "cercana" si es un pueblo limítrofe o dudoso de Cataluña; "lejana" si está claramente
                     // fuera de esas zonas; null si no lo ha dicho.
@@ -22,7 +23,7 @@ o no está claro, déjalo en null. No deduzcas ni inventes.
 
 Devuelve únicamente el JSON.`;
 
-const CAMPOS = ['zona', 'vehiculo', 'carnet', 'disponibilidad', 'idiomas', 'experiencia'];
+const CAMPOS = ['nombre', 'zona', 'vehiculo', 'carnet', 'disponibilidad', 'idiomas', 'experiencia'];
 
 function fusionar(actual, nuevo) {
   const out = { ...actual };
