@@ -43,7 +43,32 @@ export function ensureSchema() {
       creado_en     TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS config (
+      clave  TEXT PRIMARY KEY,
+      valor  TEXT
+    );
+
     CREATE INDEX IF NOT EXISTS idx_mensajes_candidato ON mensajes(candidato_id, creado_en);
     CREATE INDEX IF NOT EXISTS idx_candidatos_telefono ON candidatos(telefono);
   `);
 }
+
+// Clave-valor simple (para recordar p. ej. los IDs de las carpetas de Drive).
+export function getConfig(clave) {
+  const row = db.prepare('SELECT valor FROM config WHERE clave = ?').get(clave);
+  return row?.valor ?? null;
+}
+
+export function setConfig(clave, valor) {
+  db.prepare(
+    'INSERT INTO config (clave, valor) VALUES (?, ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor',
+  ).run(clave, valor);
+}
+
+export function delConfig(clave) {
+  db.prepare('DELETE FROM config WHERE clave = ?').run(clave);
+}
+
+// Crea el esquema al cargar el módulo (idempotente) para que las tablas existan
+// siempre que se importe la BD, sin depender del orden de arranque.
+ensureSchema();

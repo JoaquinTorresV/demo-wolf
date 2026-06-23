@@ -2,13 +2,15 @@
 // (y por tanto posee → sin problemas de permisos). Usa OAuth (Client ID/Secret +
 // Refresh Token), sin dependencias externas. No crítico: si falla, loguea y sigue.
 import 'dotenv/config';
+import { getConfig, setConfig, delConfig } from '../../db/db.js';
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const FILES_URL = 'https://www.googleapis.com/drive/v3/files';
 const UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true';
 
 const CARPETA_PADRE = process.env.DRIVE_PARENT_NAME || 'Wolf Control - Aptos';
-const cacheCarpetas = new Map(); // nombre|parent -> id
+const KEY_PADRE = 'drive_folder_parent';
+const keySub = (nombre) => `drive_folder_sub_${nombre}`;
 
 function configCompleta() {
   return (
@@ -36,10 +38,11 @@ async function getAccessToken() {
   return (await res.json()).access_token || null;
 }
 
-// Busca una carpeta por nombre (opcionalmente dentro de un padre); si no existe, la crea.
-async function ensureFolder(token, nombre, parentId = null) {
-  const cacheKey = `${nombre}|${parentId || 'root'}`;
-  if (cacheCarpetas.has(cacheKey)) return cacheCarpetas.get(cacheKey);
+// Devuelve el ID de una carpeta. Prioridad: ID recordado (a prueba de renombrado) →
+// búsqueda por nombre → crearla. Guarda el ID encontrado/creado para la próxima vez.
+async function ensureFolder(token, nombre, parentId, configKey) {
+  const recordado = getConfig(configKey);
+  if (recordado) return recordado;
 
   const filtros = [
     `name = '${nombre.replace(/'/g, "\\'")}'`,
@@ -56,7 +59,7 @@ async function ensureFolder(token, nombre, parentId = null) {
   if (buscar.ok) {
     const data = await buscar.json();
     if (data.files?.length) {
-      cacheCarpetas.set(cacheKey, data.files[0].id);
+      setConfig(configKey, data.files[0].id);
       return data.files[0].id;
     }
   }
@@ -76,7 +79,7 @@ async function ensureFolder(token, nombre, parentId = null) {
     return null;
   }
   const folder = await crear.json();
-  cacheCarpetas.set(cacheKey, folder.id);
+  setConfig(configKey, folder.id);
   console.log('[drive] carpeta creada:', nombre, folder.id);
   return folder.id;
 }
@@ -92,9 +95,9 @@ export async function subirCV(nombreArchivo, contenido, subcarpeta = 'Otros') {
     const token = await getAccessToken();
     if (!token) return null;
 
-    const padreId = await ensureFolder(token, CARPETA_PADRE);
+    const padreId = await ensureFolder(token, CARPETA_PADRE, null, KEY_PADRE);
     if (!padreId) return null;
-    const carpetaId = await ensureFolder(token, subcarpeta, padreId);
+    const carpetaId = await ensureFolder(token, subcarpeta, padreId, keySub(subcarpeta));
     if (!carpetaId) return null;
 
     const metadata = {
@@ -124,6 +127,13 @@ export async function subirCV(nombreArchivo, contenido, subcarpeta = 'Otros') {
 
     if (!res.ok) {
       console.error('[drive] error subiendo el CV:', res.status, await res.text());
+      // Si la carpeta recordada ya no existe (borrada/movida), olvida los IDs para
+      // recrearlas en el próximo candidato.
+      if (res.status === 404) {
+        delConfig(KEY_PADRE);
+        delConfig(keySub(subcarpeta));
+        console.warn('[drive] carpetas olvidadas; se recrearán en el próximo apto.');
+      }
       return null;
     }
     const data = await res.json();
