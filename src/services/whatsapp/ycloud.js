@@ -40,7 +40,7 @@ export async function enviarTexto(to, body) {
 // (El nombre del filtro debe confirmarse contra YCloud en la primera prueba real.)
 async function buscarContacto(phoneNumber, apiKey) {
   const res = await fetch(
-    `${API_BASE}/contact/contacts?phoneNumber=${encodeURIComponent(phoneNumber)}`,
+    `${API_BASE}/contact/contacts?filter.phoneNumber=${encodeURIComponent(phoneNumber)}`,
     { headers: { 'X-API-Key': apiKey } },
   );
   if (!res.ok) return null;
