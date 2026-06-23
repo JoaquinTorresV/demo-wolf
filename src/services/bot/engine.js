@@ -65,10 +65,14 @@ export async function procesarMensaje(rawFrom, texto) {
     });
     // Etiquetar en YCloud para que los reclutadores filtren sin abrir el chat general.
     await aplicarEtiquetas(telefono, etiquetasParaDecision(decision, datos));
-    // Solo los APTOS generan CV en la carpeta de Drive.
+    // Solo los APTOS generan CV en Drive, en la subcarpeta según su modalidad.
     if (decision.resultado === 'apto') {
       const { nombreArchivo, contenido } = construirCV(telefono, datos, decision);
-      await subirCV(nombreArchivo, contenido);
+      const subcarpeta =
+        decision.puesto === 'eventos' ? 'Eventos'
+        : decision.puesto === 'fijo_verano' ? 'Fines de semana'
+        : 'Otros';
+      await subirCV(nombreArchivo, contenido, subcarpeta);
     }
   }
 

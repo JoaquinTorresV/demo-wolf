@@ -1,21 +1,23 @@
-// Sube el CV de un candidato a la carpeta "Aptos" de Google Drive.
-// Usa OAuth (Client ID/Secret + Refresh Token) — sin dependencias externas.
-// No crítico: si falla o falta config, se loguea pero no rompe el flujo.
+// Sube el CV de un candidato a Google Drive, en carpetas que el propio bot crea
+// (y por tanto posee → sin problemas de permisos). Usa OAuth (Client ID/Secret +
+// Refresh Token), sin dependencias externas. No crítico: si falla, loguea y sigue.
 import 'dotenv/config';
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const FILES_URL = 'https://www.googleapis.com/drive/v3/files';
 const UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true';
+
+const CARPETA_PADRE = process.env.DRIVE_PARENT_NAME || 'Wolf Control - Aptos';
+const cacheCarpetas = new Map(); // nombre|parent -> id
 
 function configCompleta() {
   return (
     process.env.GOOGLE_CLIENT_ID &&
     process.env.GOOGLE_CLIENT_SECRET &&
-    process.env.GOOGLE_REFRESH_TOKEN &&
-    process.env.DRIVE_FOLDER_ID
+    process.env.GOOGLE_REFRESH_TOKEN
   );
 }
 
-// Intercambia el refresh token por un access token de corta duración.
 async function getAccessToken() {
   const res = await fetch(TOKEN_URL, {
     method: 'POST',
@@ -31,15 +33,58 @@ async function getAccessToken() {
     console.error('[drive] no se pudo refrescar el token:', res.status, await res.text());
     return null;
   }
-  const data = await res.json();
-  return data.access_token || null;
+  return (await res.json()).access_token || null;
 }
 
-// Sube un documento de texto como Google Doc dentro de la carpeta Aptos.
-// Devuelve el id del archivo o null.
-export async function subirCV(nombreArchivo, contenido) {
+// Busca una carpeta por nombre (opcionalmente dentro de un padre); si no existe, la crea.
+async function ensureFolder(token, nombre, parentId = null) {
+  const cacheKey = `${nombre}|${parentId || 'root'}`;
+  if (cacheCarpetas.has(cacheKey)) return cacheCarpetas.get(cacheKey);
+
+  const filtros = [
+    `name = '${nombre.replace(/'/g, "\\'")}'`,
+    "mimeType = 'application/vnd.google-apps.folder'",
+    'trashed = false',
+  ];
+  if (parentId) filtros.push(`'${parentId}' in parents`);
+
+  const q = encodeURIComponent(filtros.join(' and '));
+  const buscar = await fetch(
+    `${FILES_URL}?q=${q}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (buscar.ok) {
+    const data = await buscar.json();
+    if (data.files?.length) {
+      cacheCarpetas.set(cacheKey, data.files[0].id);
+      return data.files[0].id;
+    }
+  }
+
+  // No existe → crearla.
+  const crear = await fetch(`${FILES_URL}?supportsAllDrives=true`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: nombre,
+      mimeType: 'application/vnd.google-apps.folder',
+      ...(parentId ? { parents: [parentId] } : {}),
+    }),
+  });
+  if (!crear.ok) {
+    console.error('[drive] no se pudo crear la carpeta', nombre, crear.status, await crear.text());
+    return null;
+  }
+  const folder = await crear.json();
+  cacheCarpetas.set(cacheKey, folder.id);
+  console.log('[drive] carpeta creada:', nombre, folder.id);
+  return folder.id;
+}
+
+// Sube el CV como Google Doc dentro de "Wolf Control - Aptos / <subcarpeta>".
+export async function subirCV(nombreArchivo, contenido, subcarpeta = 'Otros') {
   if (!configCompleta()) {
-    console.warn('[drive] config incompleta (falta CLIENT_ID/SECRET/REFRESH_TOKEN/FOLDER_ID); no se sube el CV.');
+    console.warn('[drive] config incompleta (falta CLIENT_ID/SECRET/REFRESH_TOKEN); no se sube el CV.');
     return null;
   }
 
@@ -47,10 +92,15 @@ export async function subirCV(nombreArchivo, contenido) {
     const token = await getAccessToken();
     if (!token) return null;
 
+    const padreId = await ensureFolder(token, CARPETA_PADRE);
+    if (!padreId) return null;
+    const carpetaId = await ensureFolder(token, subcarpeta, padreId);
+    if (!carpetaId) return null;
+
     const metadata = {
       name: nombreArchivo,
-      parents: [process.env.DRIVE_FOLDER_ID],
-      mimeType: 'application/vnd.google-apps.document', // se convierte a Google Doc
+      parents: [carpetaId],
+      mimeType: 'application/vnd.google-apps.document',
     };
 
     const boundary = 'wolfcv' + Date.now();
@@ -77,7 +127,7 @@ export async function subirCV(nombreArchivo, contenido) {
       return null;
     }
     const data = await res.json();
-    console.log('[drive] CV subido:', data.id, nombreArchivo);
+    console.log(`[drive] CV subido a "${CARPETA_PADRE}/${subcarpeta}":`, data.id, nombreArchivo);
     return data.id;
   } catch (err) {
     console.error('[drive] excepción subiendo el CV:', err.message);
